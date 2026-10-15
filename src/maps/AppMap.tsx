@@ -59,7 +59,7 @@ export function AppMap({
           key={m.id}
           coordinate={{ latitude: m.latitude, longitude: m.longitude }}
           title={m.title}
-          pinColor={m.kind === 'driver' ? '#E5178B' : m.kind === 'branch' ? '#F47C20' : '#2E63A6'}
+          pinColor={m.kind === 'driver' ? '#C0202C' : m.kind === 'branch' ? '#F47C20' : '#2E63A6'}
         />
       ))}
     </MapView>

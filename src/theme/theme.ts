@@ -39,26 +39,27 @@ export interface Theme {
   spacing: (n: number) => number;
 }
 
-// Sampled from the logo.
-const MAGENTA = '#E5178B';
+// Sampled from the logo: banner red primary, field green accent, ring gold.
+const RED = '#C0202C';
+const GREEN = '#3F7F3A';
+const GREEN_BRIGHT = '#5AA152';
 const ORANGE = '#F47C20';
-const BLUE = '#2E63A6';
 
 const light: Theme['colors'] = {
-  background: '#FCF7FA',
+  background: '#FBF7F5',
   surface: '#FFFFFF',
-  surfaceAlt: '#F6EEF3',
-  border: '#EBDCE5',
+  surfaceAlt: '#F4EEEC',
+  border: '#E8DDDA',
   text: '#1E1A1C',
-  textMuted: '#6E6167',
-  primary: MAGENTA,
+  textMuted: '#6E6460',
+  primary: RED,
   onPrimary: '#FFFFFF',
-  secondary: ORANGE,
-  accent: BLUE,
+  secondary: GREEN,
+  accent: GREEN,
   success: '#2E9E5B',
   danger: '#D6453B',
   warning: ORANGE,
-  progress: MAGENTA,
+  progress: RED,
   skeleton: '#EFE6EC',
   skeletonHighlight: '#F8F1F5',
   backdrop: 'rgba(30,20,26,0.45)',
@@ -72,14 +73,14 @@ const dark: Theme['colors'] = {
   border: '#342D3C',
   text: '#F5F1F3',
   textMuted: '#A79CA6',
-  primary: '#F23BA0',
+  primary: '#E24A54',
   onPrimary: '#FFFFFF',
-  secondary: '#F78F3D',
-  accent: '#5C8BD6',
+  secondary: GREEN_BRIGHT,
+  accent: GREEN_BRIGHT,
   success: '#3CC06E',
   danger: '#F0655B',
   warning: '#F78F3D',
-  progress: '#F23BA0',
+  progress: '#E24A54',
   skeleton: '#262230',
   skeletonHighlight: '#302B3A',
   backdrop: 'rgba(0,0,0,0.6)',
