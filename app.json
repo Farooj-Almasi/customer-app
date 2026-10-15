@@ -1,0 +1,46 @@
+{
+  "expo": {
+    "name": "Farooj Almasi",
+    "slug": "farooj-almasi-customer",
+    "scheme": "faroojalmasi",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": false,
+    "icon": "./assets/logo.jpeg",
+    "assetBundlePatterns": ["**/*"],
+    "splash": {
+      "image": "./assets/logo.jpeg",
+      "resizeMode": "contain",
+      "backgroundColor": "#FFFFFF"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.faroojalmasi.customer"
+    },
+    "android": {
+      "package": "com.faroojalmasi.customer",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/logo.jpeg",
+        "backgroundColor": "#FFFFFF"
+      },
+      "config": {
+        "googleMaps": {
+          "//": "Supply your Google Maps Android API key here (or via EAS secret). Never commit a real key.",
+          "apiKey": ""
+        }
+      }
+    },
+    "plugins": [
+      [
+        "expo-location",
+        { "locationWhenInUsePermission": "Allow Farooj Almasi to use your location to set your delivery address." }
+      ]
+    ],
+    "extra": {
+      "//": "API base URL is injected per environment; never hard-code secrets.",
+      "apiBaseUrl": "http://localhost:3000/api/v1",
+      "googleMapsApiKey": ""
+    }
+  }
+}
