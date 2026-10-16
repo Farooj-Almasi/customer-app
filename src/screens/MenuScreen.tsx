@@ -4,9 +4,10 @@ import { ScrollView, Text, View } from 'react-native';
 
 import { useAuth } from '../auth/AuthProvider';
 import { useCart } from '../cart/CartProvider';
-import { Card, Screen } from '../components/ui';
+import { Card, Chip, Screen, TextField } from '../components/ui';
 import { useAsync } from '../hooks/useAsync';
 import { useLocale } from '../i18n/LocaleProvider';
+import { filterMenu } from '../menu/filter';
 import { BottomSheet, CartBadge, EmptyState, ErrorState, PressableScale, Skeleton } from '../motion';
 import { RootStackParamList } from '../navigation/types';
 import { useTheme } from '../theme/theme';
@@ -31,6 +32,14 @@ export function MenuScreen({ route, navigation }: NativeStackScreenProps<RootSta
 
   // The product whose size the customer is choosing, if any.
   const [variantFor, setVariantFor] = useState<MenuProduct | null>(null);
+  // Storefront controls: free-text search and a selected category (null = All).
+  const [query, setQuery] = useState('');
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+
+  const categories = data?.categories ?? [];
+  const visible = filterMenu(categories, query, activeCategory);
+  const catName = (c: { name: string; nameAr: string | null }): string =>
+    lang === 'ar' && c.nameAr ? c.nameAr : c.name;
 
   const addLine = (product: MenuProduct, variant?: { id: string; name: string; priceMinor: number }): void => {
     dispatch({
@@ -84,11 +93,35 @@ export function MenuScreen({ route, navigation }: NativeStackScreenProps<RootSta
         </View>
       ) : error ? (
         <ErrorState title={t('menu.errorTitle')} message={error.message} actionLabel={t('common.retry')} onAction={reload} />
-      ) : !data || data.categories.length === 0 ? (
+      ) : !data || categories.length === 0 ? (
         <EmptyState title={t('menu.emptyTitle')} message={t('menu.emptyBody')} />
       ) : (
-        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: count > 0 ? 96 : 24 }}>
-          {data.categories.map((category) => (
+        <>
+          <View style={{ paddingHorizontal: 16, paddingTop: 4 }}>
+            <TextField label="" value={query} onChangeText={setQuery} placeholder={t('menu.search')} />
+          </View>
+          <View style={{ height: 48 }}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingHorizontal: 16, gap: 8, alignItems: 'center' }}
+            >
+              <Chip label={t('menu.all')} selected={activeCategory === null} onPress={() => setActiveCategory(null)} />
+              {categories.map((c) => (
+                <Chip
+                  key={c.id}
+                  label={catName(c)}
+                  selected={activeCategory === c.id}
+                  onPress={() => setActiveCategory((cur) => (cur === c.id ? null : c.id))}
+                />
+              ))}
+            </ScrollView>
+          </View>
+          {visible.length === 0 ? (
+            <EmptyState title={t('menu.noResultsTitle')} message={t('menu.noResultsBody')} />
+          ) : (
+            <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: count > 0 ? 96 : 24 }}>
+              {visible.map((category) => (
             <View key={category.id} style={{ marginBottom: 20 }}>
               <Text style={{ color: theme.colors.text, fontSize: 18, fontWeight: '800', marginBottom: 10 }}>
                 {lang === 'ar' && category.nameAr ? category.nameAr : category.name}
@@ -133,8 +166,10 @@ export function MenuScreen({ route, navigation }: NativeStackScreenProps<RootSta
                 })}
               </View>
             </View>
-          ))}
-        </ScrollView>
+              ))}
+            </ScrollView>
+          )}
+        </>
       )}
 
       {count > 0 && cart.branchId === branchId ? (
