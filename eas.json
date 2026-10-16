@@ -22,7 +22,7 @@
       "distribution": "internal",
       "channel": "preview",
       "env": {
-        "API_BASE_URL": "https://fam-api-453110822953.me-central1.run.app/api/v1"
+        "API_BASE_URL": "https://fam-api-staging-684357147464.me-central1.run.app/api/v1"
       },
       "android": {
         "buildType": "apk"
@@ -32,7 +32,7 @@
       "channel": "production",
       "autoIncrement": true,
       "env": {
-        "API_BASE_URL": "https://fam-api-453110822953.me-central1.run.app/api/v1"
+        "API_BASE_URL": "https://fam-api-staging-684357147464.me-central1.run.app/api/v1"
       },
       "android": {
         "buildType": "app-bundle"
