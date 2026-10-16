@@ -130,7 +130,7 @@ export function MenuScreen({ route, navigation }: NativeStackScreenProps<RootSta
                 {category.products.map((product) => {
                   const hasVariants = product.variants.length > 0;
                   return (
-                    <Card key={product.id}>
+                    <Card key={product.id} elevated>
                       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                         <View style={{ flex: 1, paddingRight: 12 }}>
                           <Text style={{ color: theme.colors.text, fontSize: 16, fontWeight: '700' }}>

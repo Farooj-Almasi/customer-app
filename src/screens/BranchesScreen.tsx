@@ -123,7 +123,7 @@ export function BranchesScreen({ navigation }: NativeStackScreenProps<RootStackP
                   accessibilityRole="button"
                   onPress={() => navigation.navigate('Menu', { branchId: branch.id, branchName: branch.name })}
                 >
-                  <Card>
+                  <Card elevated>
                     <Text style={{ color: theme.colors.text, fontSize: 17, fontWeight: '700' }}>
                       {lang === 'ar' && branch.nameAr ? branch.nameAr : branch.name}
                     </Text>

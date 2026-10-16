@@ -47,7 +47,7 @@ export function OffersScreen({ navigation }: NativeStackScreenProps<RootStackPar
       ) : (
         <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }}>
           {offers.map((offer) => (
-            <Card key={offer.id}>
+            <Card key={offer.id} elevated>
               <Text style={{ color: theme.colors.text, fontWeight: '800', fontSize: 17 }}>{offer.name}</Text>
               {offer.description ? (
                 <Text style={{ color: theme.colors.textMuted, marginTop: 4 }}>{offer.description}</Text>
