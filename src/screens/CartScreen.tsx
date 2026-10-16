@@ -37,6 +37,9 @@ export function CartScreen({ navigation }: NativeStackScreenProps<RootStackParam
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <View style={{ flex: 1, paddingRight: 12 }}>
                 <Text style={{ color: theme.colors.text, fontSize: 16, fontWeight: '700' }}>{line.productName}</Text>
+                {line.variantName ? (
+                  <Text style={{ color: theme.colors.textMuted, fontSize: 13, marginTop: 1 }}>{line.variantName}</Text>
+                ) : null}
                 <Text style={{ color: theme.colors.primary, fontWeight: '700', marginTop: 4 }}>
                   {formatSar(line.unitPriceMinor * line.quantity)}
                 </Text>

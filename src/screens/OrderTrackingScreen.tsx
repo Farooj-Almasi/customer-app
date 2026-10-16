@@ -8,6 +8,7 @@ import { OrderStatusTracker } from '../features/order/OrderStatusTracker';
 import { useAsync } from '../hooks/useAsync';
 import { AppMap, DEFAULT_REGION, MapMarker } from '../maps/AppMap';
 import { ErrorState, Skeleton } from '../motion';
+import { useRealtime } from '../realtime/RealtimeProvider';
 import { ORDER_STATUS, ORDER_TYPE, OrderStatus } from '../types/backend';
 import type { DeliveryTracking } from '../api/types';
 import { RootStackParamList } from '../navigation/types';
@@ -34,6 +35,24 @@ export function OrderTrackingScreen({ route, navigation }: NativeStackScreenProp
   const { orderId } = route.params;
   const { data: order, loading, error, reload } = useAsync(() => api.order(orderId), [orderId]);
   const [tick, setTick] = useState(0);
+  const { subscribe } = useRealtime();
+
+  // Realtime is the accelerator; the poll below is the floor. The server only
+  // ever pushes this customer their own events, but they may have several orders
+  // open, so match on the order id and ignore the rest. On a match, refresh both
+  // the order (status) and the delivery tracking (driver position) at once.
+  useEffect(() => {
+    const matchesOrder = (payload: unknown): boolean =>
+      typeof payload === 'object' && payload !== null && (payload as { orderId?: unknown }).orderId === orderId;
+    const onEvent = (payload: unknown): void => {
+      if (matchesOrder(payload)) {
+        setTick((t) => t + 1);
+        reload();
+      }
+    };
+    const unsubs = [subscribe('order.transitioned', onEvent), subscribe('driver.location', onEvent)];
+    return () => unsubs.forEach((u) => u());
+  }, [subscribe, orderId, reload]);
 
   // Live delivery tracking (driver location) for delivery orders only.
   const tracking = useAsync<DeliveryTracking | null>(

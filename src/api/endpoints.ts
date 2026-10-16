@@ -1,6 +1,21 @@
 import { OrderType, PaymentMethod } from '../types/backend';
 import { ApiClient } from './http';
-import { Address, AuthTokens, Branch, DeliveryTracking, Menu, Order, Payment, PriceQuote } from './types';
+import {
+  Address,
+  AuthTokens,
+  Branch,
+  CustomerConfig,
+  CustomerQuote,
+  DeliveryTracking,
+  LoyaltyLedger,
+  Menu,
+  NotificationItem,
+  Order,
+  Paginated,
+  Payment,
+  PriceQuote,
+  Profile,
+} from './types';
 
 export interface AddressInput {
   label?: string;
@@ -18,6 +33,8 @@ export interface AddressInput {
 /** Cart item as the quote/order endpoints expect it. */
 export interface OrderItemInput {
   productId: string;
+  /** The chosen variant (size). Omitted means the product's default price. */
+  productVariantId?: string;
   quantity: number;
   addonIds?: string[];
 }
@@ -55,6 +72,20 @@ export class Api {
     return this.http.request('/pricing/quote', { method: 'POST', body: input, public: true });
   }
 
+  /**
+   * The authenticated quote for the signed-in customer: it previews a coupon
+   * and any automatic promotion, and says whether the branch is open. Read-only
+   * — no coupon usage is recorded; placement applies it atomically.
+   */
+  quoteOrder(input: {
+    branchId: string;
+    type: OrderType;
+    items: OrderItemInput[];
+    couponCode?: string;
+  }): Promise<CustomerQuote> {
+    return this.http.request('/customer/orders/quote', { method: 'POST', body: input });
+  }
+
   // --- Customer orders (authenticated) --------------------------------------
   placeOrder(input: {
     branchId: string;
@@ -89,8 +120,34 @@ export class Api {
     return this.http.request('/customer/addresses', { method: 'POST', body: input });
   }
 
+  updateAddress(id: string, input: AddressInput): Promise<Address> {
+    return this.http.request(`/customer/addresses/${id}`, { method: 'PATCH', body: input });
+  }
+
   deleteAddress(id: string): Promise<{ id: string; deleted: boolean }> {
     return this.http.request(`/customer/addresses/${id}`, { method: 'DELETE' });
+  }
+
+  // --- Profile, loyalty, notifications (authenticated) ----------------------
+  profile(): Promise<Profile> {
+    return this.http.request('/customer/me');
+  }
+
+  updateProfile(fullName: string): Promise<Profile> {
+    return this.http.request('/customer/me', { method: 'PATCH', body: { fullName } });
+  }
+
+  loyalty(): Promise<LoyaltyLedger> {
+    return this.http.request('/customer/loyalty');
+  }
+
+  notifications(): Promise<Paginated<NotificationItem>> {
+    return this.http.request('/customer/notifications');
+  }
+
+  // --- Public config (offers, banners) --------------------------------------
+  config(): Promise<CustomerConfig> {
+    return this.http.request('/customer/config', { public: true });
   }
 
   // --- Delivery tracking (authenticated) ------------------------------------

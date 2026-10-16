@@ -12,16 +12,23 @@ import { PressableScale, Toast } from '../motion';
 import { RootStackParamList } from '../navigation/types';
 import { useTheme } from '../theme/theme';
 
-/** Add a delivery address: details plus a map pin the driver navigates to. */
-export function AddAddressScreen({ navigation }: NativeStackScreenProps<RootStackParamList, 'AddAddress'>): React.JSX.Element {
+/** Add or edit a delivery address: details plus a map pin the driver navigates to. */
+export function AddAddressScreen({ route, navigation }: NativeStackScreenProps<RootStackParamList, 'AddAddress'>): React.JSX.Element {
   const theme = useTheme();
   const { api } = useAuth();
-  const [label, setLabel] = useState('Home');
-  const [line1, setLine1] = useState('');
-  const [city, setCity] = useState('Riyadh');
-  const [notes, setNotes] = useState('');
-  const [region, setRegion] = useState<Region>(DEFAULT_REGION);
-  const [pin, setPin] = useState<{ latitude: number; longitude: number } | null>(null);
+  const editing = route.params?.address;
+  const [label, setLabel] = useState(editing?.label ?? 'Home');
+  const [line1, setLine1] = useState(editing?.line1 ?? '');
+  const [city, setCity] = useState(editing?.city ?? 'Riyadh');
+  const [notes, setNotes] = useState(editing?.notes ?? '');
+  const initialPin =
+    editing?.latitude != null && editing?.longitude != null
+      ? { latitude: editing.latitude, longitude: editing.longitude }
+      : null;
+  const [region, setRegion] = useState<Region>(
+    initialPin ? { ...initialPin, latitudeDelta: 0.01, longitudeDelta: 0.01 } : DEFAULT_REGION,
+  );
+  const [pin, setPin] = useState<{ latitude: number; longitude: number } | null>(initialPin);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -44,15 +51,20 @@ export function AddAddressScreen({ navigation }: NativeStackScreenProps<RootStac
   const save = async (): Promise<void> => {
     setBusy(true);
     setError(null);
+    const input = {
+      label,
+      line1,
+      city,
+      notes: notes || undefined,
+      latitude: pin?.latitude,
+      longitude: pin?.longitude,
+    };
     try {
-      await api.createAddress({
-        label,
-        line1,
-        city,
-        notes: notes || undefined,
-        latitude: pin?.latitude,
-        longitude: pin?.longitude,
-      });
+      if (editing) {
+        await api.updateAddress(editing.id, input);
+      } else {
+        await api.createAddress(input);
+      }
       navigation.goBack();
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Could not save the address.');
@@ -63,7 +75,7 @@ export function AddAddressScreen({ navigation }: NativeStackScreenProps<RootStac
   const valid = line1.trim().length > 0 && city.trim().length > 0;
 
   return (
-    <Screen title="Add address" onBack={() => navigation.goBack()}>
+    <Screen title={editing ? 'Edit address' : 'Add address'} onBack={() => navigation.goBack()}>
       <Toast visible={!!error} message={error ?? ''} tone="danger" onHide={() => setError(null)} />
       <ScrollView contentContainerStyle={{ padding: 16 }}>
         <View style={{ height: 220, borderRadius: theme.radius.lg, overflow: 'hidden', marginBottom: 8 }}>
@@ -83,7 +95,7 @@ export function AddAddressScreen({ navigation }: NativeStackScreenProps<RootStac
         <TextField label="City" value={city} onChangeText={setCity} />
         <TextField label="Notes for the driver (optional)" value={notes} onChangeText={setNotes} maxLength={500} />
 
-        <PrimaryButton label="Save address" onPress={save} busy={busy} disabled={!valid} />
+        <PrimaryButton label={editing ? 'Save changes' : 'Save address'} onPress={save} busy={busy} disabled={!valid} />
       </ScrollView>
     </Screen>
   );

@@ -8,7 +8,7 @@ import { Address } from '../api/types';
 import { useAuth } from '../auth/AuthProvider';
 import { useCart } from '../cart/CartProvider';
 import { toOrderItems } from '../cart/cart';
-import { Card, PrimaryButton, Screen } from '../components/ui';
+import { Card, PrimaryButton, Screen, TextField } from '../components/ui';
 import { useAsync } from '../hooks/useAsync';
 import { BottomSheet, ErrorState, PressableScale, Skeleton, Toast } from '../motion';
 import { ORDER_TYPE, OrderType, PAYMENT_METHOD, PaymentMethod } from '../types/backend';
@@ -23,7 +23,7 @@ const METHOD_LABELS: Record<string, string> = {
   [PAYMENT_METHOD.CASH_ON_DELIVERY]: 'Cash on delivery',
 };
 
-/** Choose pickup or delivery, review the server quote, pick payment, place order. */
+/** Choose pickup or delivery, review the server quote (with coupon), pick payment, place order. */
 export function CheckoutScreen({ route, navigation }: NativeStackScreenProps<RootStackParamList, 'Checkout'>): React.JSX.Element {
   const theme = useTheme();
   const { api } = useAuth();
@@ -38,10 +38,17 @@ export function CheckoutScreen({ route, navigation }: NativeStackScreenProps<Roo
   const [busy, setBusy] = useState(false);
   const [placeError, setPlaceError] = useState<string | null>(null);
 
-  const { data: quote, loading, error, reload } = useAsync(
-    () => api.quote({ branchId, type, items }),
-    [branchId, JSON.stringify(items), type],
+  // The coupon being typed, and the one actually applied (fed to the quote).
+  const [couponInput, setCouponInput] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<string | undefined>(undefined);
+
+  // Authenticated quote: same VAT breakdown as the public one, plus coupon and
+  // promotion preview and whether the branch is open.
+  const { data, loading, error, reload } = useAsync(
+    () => api.quoteOrder({ branchId, type, items, couponCode: appliedCoupon }),
+    [branchId, JSON.stringify(items), type, appliedCoupon],
   );
+  const quote = data?.quote ?? null;
 
   // Addresses, reloaded whenever the screen regains focus (e.g. after adding one).
   const addresses = useAsync<Address[]>(() => api.listAddresses(), []);
@@ -58,6 +65,16 @@ export function CheckoutScreen({ route, navigation }: NativeStackScreenProps<Roo
   const isDelivery = type === ORDER_TYPE.DELIVERY;
   const needsAddress = isDelivery && !addressId;
 
+  const applyCoupon = (): void => {
+    const code = couponInput.trim().toUpperCase();
+    setAppliedCoupon(code.length > 0 ? code : undefined);
+  };
+
+  const removeCoupon = (): void => {
+    setCouponInput('');
+    setAppliedCoupon(undefined);
+  };
+
   const placeOrder = async (): Promise<void> => {
     if (!branchId || needsAddress) {
       return;
@@ -71,6 +88,9 @@ export function CheckoutScreen({ route, navigation }: NativeStackScreenProps<Roo
         paymentMethod: method,
         items,
         customerAddressId: isDelivery ? addressId ?? undefined : undefined,
+        // Only send a coupon the quote actually accepted, so placement does not
+        // fail on a code the customer has already seen rejected above.
+        couponCode: data?.coupon ? appliedCoupon : undefined,
       });
       dispatch({ type: 'CLEAR' });
       if (method === PAYMENT_METHOD.CASH_ON_DELIVERY) {
@@ -111,6 +131,8 @@ export function CheckoutScreen({ route, navigation }: NativeStackScreenProps<Roo
     );
   };
 
+  const branchClosed = !!data?.branchOpen && !data.branchOpen.isOpen;
+
   return (
     <Screen title="Checkout" onBack={() => navigation.goBack()}>
       <Toast visible={!!placeError} message={placeError ?? ''} tone="danger" onHide={() => setPlaceError(null)} />
@@ -119,6 +141,14 @@ export function CheckoutScreen({ route, navigation }: NativeStackScreenProps<Roo
           {typeTab(ORDER_TYPE.PICKUP, 'Pickup')}
           {typeTab(ORDER_TYPE.DELIVERY, 'Delivery')}
         </View>
+
+        {branchClosed ? (
+          <Card style={{ borderColor: theme.colors.warning }}>
+            <Text style={{ color: theme.colors.warning, fontWeight: '700' }}>
+              {data?.branchOpen.message ?? 'This branch is closed right now.'}
+            </Text>
+          </Card>
+        ) : null}
 
         {isDelivery ? (
           <Card>
@@ -157,6 +187,13 @@ export function CheckoutScreen({ route, navigation }: NativeStackScreenProps<Roo
                         {[a.line1, a.city].filter(Boolean).join(', ')}
                       </Text>
                     </View>
+                    <PressableScale
+                      accessibilityRole="button"
+                      accessibilityLabel={`Edit ${a.label ?? 'address'}`}
+                      onPress={() => navigation.navigate('AddAddress', { address: a })}
+                    >
+                      <Text style={{ color: theme.colors.accent, fontWeight: '600' }}>Edit</Text>
+                    </PressableScale>
                   </PressableScale>
                 );
               })
@@ -168,6 +205,46 @@ export function CheckoutScreen({ route, navigation }: NativeStackScreenProps<Roo
             </PressableScale>
           </Card>
         ) : null}
+
+        <Card>
+          <Text style={{ color: theme.colors.textMuted, fontSize: 13, fontWeight: '600', marginBottom: 8 }}>Promo code</Text>
+          {data?.coupon ? (
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <View style={{ flex: 1, paddingRight: 12 }}>
+                <Text style={{ color: theme.colors.success, fontWeight: '700' }}>{data.coupon.name}</Text>
+                <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>
+                  {data.coupon.code} · −{formatSar(data.coupon.discountMinor)}
+                </Text>
+              </View>
+              <PressableScale accessibilityRole="button" accessibilityLabel="Remove coupon" onPress={removeCoupon}>
+                <Text style={{ color: theme.colors.danger, fontWeight: '700' }}>Remove</Text>
+              </PressableScale>
+            </View>
+          ) : (
+            <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 10 }}>
+              <View style={{ flex: 1 }}>
+                <TextField label="" value={couponInput} onChangeText={setCouponInput} placeholder="Enter code" maxLength={40} />
+              </View>
+              <PressableScale
+                accessibilityRole="button"
+                accessibilityLabel="Apply coupon"
+                onPress={applyCoupon}
+                style={{
+                  backgroundColor: theme.colors.surfaceAlt,
+                  borderRadius: theme.radius.md,
+                  paddingVertical: 14,
+                  paddingHorizontal: 18,
+                  marginBottom: 16,
+                }}
+              >
+                <Text style={{ color: theme.colors.text, fontWeight: '700' }}>Apply</Text>
+              </PressableScale>
+            </View>
+          )}
+          {data?.couponError ? (
+            <Text style={{ color: theme.colors.danger, fontSize: 13 }}>{data.couponError}</Text>
+          ) : null}
+        </Card>
 
         <Card>
           <Text style={{ color: theme.colors.text, fontWeight: '800', fontSize: 16, marginBottom: 12 }}>Order total</Text>
@@ -209,7 +286,7 @@ export function CheckoutScreen({ route, navigation }: NativeStackScreenProps<Roo
           label={needsAddress ? 'Add a delivery address' : quote ? `Place order · ${formatSar(quote.totalMinor)}` : 'Place order'}
           onPress={needsAddress ? () => navigation.navigate('AddAddress') : placeOrder}
           busy={busy}
-          disabled={!quote || !!error}
+          disabled={!quote || !!error || branchClosed}
         />
       </View>
 

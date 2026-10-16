@@ -150,3 +150,126 @@ export interface DeliveryTracking {
     user: { fullName: string };
   } | null;
 }
+
+/** Pagination envelope the backend returns alongside every paginated collection. */
+export interface PaginationMeta {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  hasNextPage: boolean;
+}
+
+export interface Paginated<T> {
+  data: T[];
+  meta: PaginationMeta;
+}
+
+/** The customer's own profile. Phone is the login identity and is view-only. */
+export interface Profile {
+  id: string;
+  fullName: string;
+  phone: string;
+  email: string | null;
+  createdAt: string;
+}
+
+/** One entry in the loyalty points ledger (the balance is the sum of these). */
+export interface LoyaltyTransaction {
+  id: string;
+  type: string;
+  points: number;
+  orderId: string | null;
+  reason: string | null;
+  createdAt: string;
+}
+
+export interface LoyaltyLedger extends Paginated<LoyaltyTransaction> {
+  balance: number;
+}
+
+/** One item in the customer's notification feed. */
+export interface NotificationItem {
+  id: string;
+  type: string;
+  title: string;
+  body: string;
+  data: unknown;
+  orderId: string | null;
+  createdAt: string;
+}
+
+/**
+ * A published coupon shown as an offer. The card carries the very `code` the
+ * checkout accepts — there is no separate discount path.
+ */
+export interface Offer {
+  id: string;
+  code: string;
+  name: string;
+  description?: string;
+  imageUrl?: string;
+  discountType: string;
+  discountValue: number;
+  maxDiscountMinor?: number;
+  minSpendMinor?: number;
+  validUntil: string;
+}
+
+/** A promotional banner from the customer config. */
+export interface ConfigBanner {
+  id: string;
+  imageUrl: string;
+  imageUrlAr?: string;
+  title?: string;
+  titleAr?: string;
+  description?: string;
+  descriptionAr?: string;
+  buttonText?: string;
+  buttonTextAr?: string;
+  action: string | null;
+  targetId?: string;
+  targetUrl?: string;
+  branchIds: string[];
+  priority: number;
+}
+
+/** The public customer config: branding, offers, banners. Only the slices the app uses are typed. */
+export interface CustomerConfig {
+  version: number;
+  offers: Offer[];
+  banners: ConfigBanner[];
+}
+
+/** The applied coupon on a customer quote. */
+export interface AppliedCoupon {
+  code: string;
+  couponId: string;
+  name: string;
+  discountMinor: number;
+}
+
+/** The applied promotion on a customer quote. */
+export interface AppliedPromotion {
+  promotionId: string;
+  name: string;
+  discountMinor: number;
+}
+
+/**
+ * The authenticated customer quote (`/customer/orders/quote`). Richer than the
+ * public price quote: it previews the coupon and promotion and says whether the
+ * branch is open, while `quote` itself is the same breakdown as {@link PriceQuote}.
+ */
+export interface CustomerQuote {
+  quote: PriceQuote;
+  coupon: AppliedCoupon | null;
+  couponError: string | null;
+  promotion: AppliedPromotion | null;
+  branchOpen: {
+    isOpen: boolean;
+    message: string | null;
+    opensAt: string | null;
+    closesAt: string | null;
+  };
+}

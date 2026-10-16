@@ -12,11 +12,15 @@
  */
 
 export interface CartLine {
-  /** Stable key for the line: product + sorted addon ids. */
+  /** Stable key for the line: product + variant + sorted addon ids. */
   key: string;
   productId: string;
   productName: string;
-  /** Per-unit display price in minor units, from the menu (product + addons). */
+  /** The chosen variant (size), when the product has variants. */
+  productVariantId?: string;
+  /** The variant's display name, shown under the product name. */
+  variantName?: string;
+  /** Per-unit display price in minor units, from the menu (variant/product + addons). */
   unitPriceMinor: number;
   quantity: number;
   addonIds: string[];
@@ -36,9 +40,18 @@ export type CartAction =
   | { type: 'REMOVE'; key: string }
   | { type: 'CLEAR' };
 
-/** A stable line key so the same product+addons stacks instead of duplicating. */
-export function lineKey(productId: string, addonIds: readonly string[]): string {
-  return [productId, ...[...addonIds].sort()].join('|');
+/**
+ * A stable line key so the same product+variant+addons stacks instead of
+ * duplicating. The variant is part of the key: a Large and a Small of the same
+ * dish are two lines, not one — they are a different price and a different order
+ * item. Omitting it keeps the key identical to the no-variant case.
+ */
+export function lineKey(
+  productId: string,
+  addonIds: readonly string[],
+  productVariantId?: string,
+): string {
+  return [productId, productVariantId ?? '', ...[...addonIds].sort()].join('|');
 }
 
 export function cartReducer(state: Cart, action: CartAction): Cart {
@@ -47,7 +60,7 @@ export function cartReducer(state: Cart, action: CartAction): Cart {
       // Adding from a different branch replaces the cart — an order is always
       // for one branch, and mixing would be meaningless.
       const base = state.branchId === action.branchId ? state : { branchId: action.branchId, lines: [] };
-      const key = lineKey(action.line.productId, action.line.addonIds);
+      const key = lineKey(action.line.productId, action.line.addonIds, action.line.productVariantId);
       const qty = Math.max(1, action.quantity ?? 1);
       const existing = base.lines.find((l) => l.key === key);
       const lines = existing
@@ -88,7 +101,15 @@ export function estimatedTotalMinor(cart: Cart): number {
   return cart.lines.reduce((sum, l) => sum + l.unitPriceMinor * l.quantity, 0);
 }
 
-/** The cart as the order/quote API expects it: product ids, quantities, addons. */
-export function toOrderItems(cart: Cart): { productId: string; quantity: number; addonIds: string[] }[] {
-  return cart.lines.map((l) => ({ productId: l.productId, quantity: l.quantity, addonIds: l.addonIds }));
+/** The cart as the order/quote API expects it: product ids, variants, quantities, addons. */
+export function toOrderItems(
+  cart: Cart,
+): { productId: string; productVariantId?: string; quantity: number; addonIds: string[] }[] {
+  return cart.lines.map((l) => ({
+    productId: l.productId,
+    // Only sent when chosen, so a no-variant product stays a bare product id.
+    ...(l.productVariantId ? { productVariantId: l.productVariantId } : {}),
+    quantity: l.quantity,
+    addonIds: l.addonIds,
+  }));
 }

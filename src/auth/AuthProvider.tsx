@@ -11,6 +11,12 @@ interface AuthContextValue {
   /** True once the stored session has been read (avoids an auth-flash on launch). */
   ready: boolean;
   isAuthenticated: boolean;
+  /**
+   * The current access token, read synchronously. The realtime socket needs it
+   * on every (re)connect, the same way the HTTP client reads it per request —
+   * so a refreshed token is always the one used.
+   */
+  getAccessToken: () => string | null;
   /** Store the tokens returned by OTP verification and mark the session active. */
   signIn: (tokens: AuthTokens) => Promise<void>;
   signOut: () => Promise<void>;
@@ -85,6 +91,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
       api,
       ready,
       isAuthenticated,
+      getAccessToken: () => tokensRef.current?.accessToken ?? null,
       signIn: (tokens) => setTokens(tokens),
       signOut: () => setTokens(null),
     }),
