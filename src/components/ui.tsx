@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useLocale } from '../i18n/LocaleProvider';
 import { PressableScale } from '../motion';
 import { useTheme, Theme } from '../theme/theme';
 
@@ -108,21 +109,25 @@ export function Screen({
   right?: React.ReactNode;
 }): React.JSX.Element {
   const theme = useTheme();
+  const { dir, t } = useLocale();
   const insets = useSafeAreaInsets();
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background, paddingTop: insets.top }}>
       {title !== undefined ? (
         <View
           style={{
-            flexDirection: 'row',
+            flexDirection: dir === 'rtl' ? 'row-reverse' : 'row',
             alignItems: 'center',
             paddingHorizontal: theme.space.md,
             paddingVertical: theme.space.sm,
             gap: theme.space.sm,
           }}
         >
-          {onBack ? <IconButton glyph="‹" accessibilityLabel="Back" onPress={onBack} /> : null}
-          <Text style={{ color: theme.colors.text, flex: 1, ...theme.type.title }} numberOfLines={1}>
+          {onBack ? <IconButton glyph={dir === 'rtl' ? '›' : '‹'} accessibilityLabel={t('common.back')} onPress={onBack} /> : null}
+          <Text
+            style={{ color: theme.colors.text, flex: 1, textAlign: dir === 'rtl' ? 'right' : 'left', ...theme.type.title }}
+            numberOfLines={1}
+          >
             {title}
           </Text>
           {right}
@@ -251,10 +256,11 @@ export function SectionHeader({
   onAction?: () => void;
 }): React.JSX.Element {
   const theme = useTheme();
+  const { dir } = useLocale();
   return (
     <View
       style={{
-        flexDirection: 'row',
+        flexDirection: dir === 'rtl' ? 'row-reverse' : 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
         marginBottom: theme.space.sm,
@@ -355,11 +361,18 @@ export function InfoRow({
   strong?: boolean;
 }): React.JSX.Element {
   const theme = useTheme();
+  const { dir } = useLocale();
   const labelStyle: TextStyle = strong
     ? { color: theme.colors.text, ...theme.type.bodyStrong }
     : { color: theme.colors.textMuted, ...theme.type.body };
   return (
-    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: theme.space.sm }}>
+    <View
+      style={{
+        flexDirection: dir === 'rtl' ? 'row-reverse' : 'row',
+        justifyContent: 'space-between',
+        marginBottom: theme.space.sm,
+      }}
+    >
       <Text style={labelStyle}>{label}</Text>
       <Text style={{ color: theme.colors.text, fontWeight: strong ? '800' : '600', fontSize: 15 }}>{value}</Text>
     </View>

@@ -5,6 +5,7 @@ import { Text, View } from 'react-native';
 import { ApiError } from '../api/http';
 import { useAuth } from '../auth/AuthProvider';
 import { PrimaryButton, Screen, TextField } from '../components/ui';
+import { useLocale } from '../i18n/LocaleProvider';
 import { Toast } from '../motion';
 import { RootStackParamList } from '../navigation/types';
 import { useTheme } from '../theme/theme';
@@ -13,6 +14,7 @@ import { useTheme } from '../theme/theme';
 export function OtpScreen({ route, navigation }: NativeStackScreenProps<RootStackParamList, 'Otp'>): React.JSX.Element {
   const theme = useTheme();
   const { api, signIn } = useAuth();
+  const { t } = useLocale();
   const { phone } = route.params;
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
@@ -28,20 +30,20 @@ export function OtpScreen({ route, navigation }: NativeStackScreenProps<RootStac
       await signIn(tokens);
       // On sign-in the root switches to the main stack automatically.
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Wrong or expired code. Try again.');
+      setError(e instanceof ApiError ? e.message : t('otp.verifyFailed'));
       setBusy(false);
     }
   };
 
   return (
-    <Screen title="Enter code" onBack={() => navigation.goBack()}>
+    <Screen title={t('otp.title')} onBack={() => navigation.goBack()}>
       <Toast visible={!!error} message={error ?? ''} tone="danger" onHide={() => setError(null)} />
       <View style={{ padding: 20 }}>
         <Text style={{ color: theme.colors.textMuted, fontSize: 15, lineHeight: 22, marginBottom: 24 }}>
-          We sent a code to {phone}.
+          {t('otp.sentTo', { phone })}
         </Text>
-        <TextField label="Login code" value={code} onChangeText={setCode} keyboardType="number-pad" maxLength={8} autoFocus />
-        <PrimaryButton label="Verify" onPress={submit} busy={busy} disabled={!valid} />
+        <TextField label={t('otp.loginCode')} value={code} onChangeText={setCode} keyboardType="number-pad" maxLength={8} autoFocus />
+        <PrimaryButton label={t('otp.verify')} onPress={submit} busy={busy} disabled={!valid} />
       </View>
     </Screen>
   );

@@ -12,6 +12,8 @@ import Svg, { Path } from 'react-native-svg';
 import { useMotion } from '../../motion/MotionProvider';
 import { StatusTone } from './order-status.model';
 import { buildOrderTimeline, NodeState } from './order-status.model';
+import { useLocale } from '../../i18n/LocaleProvider';
+import type { MessageKey } from '../../i18n/messages';
 import { OrderStatus, OrderType } from '../../types/backend';
 import { Theme, useTheme } from '../../theme/theme';
 
@@ -142,9 +144,14 @@ function NodeIndicator({
 export function OrderStatusTracker({ status, type }: OrderStatusTrackerProps): React.JSX.Element {
   const theme = useTheme();
   const { reduceMotion } = useMotion();
+  const { t } = useLocale();
   const timeline = buildOrderTimeline(status, type);
   const accent = toneColor(theme, timeline.tone);
   const animatePulse = !reduceMotion && timeline.phase === 'in_progress';
+  // The chip names the order's own status; every OrderStatus has a `status.*`
+  // message. Milestone node keys are a subset of those same keys, so both
+  // translate without the pure model carrying copy.
+  const chipLabel = t(`status.${status}` as MessageKey);
 
   return (
     <View
@@ -169,7 +176,7 @@ export function OrderStatusTracker({ status, type }: OrderStatusTrackerProps): R
           }}
         >
           <Text style={{ color: theme.colors.onPrimary, fontWeight: '700', fontSize: 12 }}>
-            {timeline.currentLabel}
+            {chipLabel}
           </Text>
         </View>
       </View>
@@ -204,7 +211,7 @@ export function OrderStatusTracker({ status, type }: OrderStatusTrackerProps): R
                   fontWeight: node.state === 'active' ? '700' : '500',
                 }}
               >
-                {node.label}
+                {t(`status.${node.key}` as MessageKey)}
               </Text>
             </View>
           </View>

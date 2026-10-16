@@ -10,23 +10,19 @@ import { useCart } from '../cart/CartProvider';
 import { toOrderItems } from '../cart/cart';
 import { Card, PrimaryButton, Screen, TextField } from '../components/ui';
 import { useAsync } from '../hooks/useAsync';
+import { useLocale } from '../i18n/LocaleProvider';
+import type { MessageKey } from '../i18n/messages';
 import { BottomSheet, ErrorState, PressableScale, Skeleton, Toast } from '../motion';
 import { ORDER_TYPE, OrderType, PAYMENT_METHOD, PaymentMethod } from '../types/backend';
 import { RootStackParamList } from '../navigation/types';
-import { formatSar } from '../util/money';
 import { useTheme } from '../theme/theme';
-
-const METHOD_LABELS: Record<string, string> = {
-  [PAYMENT_METHOD.CARD]: 'Card',
-  [PAYMENT_METHOD.MADA]: 'mada',
-  [PAYMENT_METHOD.APPLE_PAY]: 'Apple Pay',
-  [PAYMENT_METHOD.CASH_ON_DELIVERY]: 'Cash on delivery',
-};
 
 /** Choose pickup or delivery, review the server quote (with coupon), pick payment, place order. */
 export function CheckoutScreen({ route, navigation }: NativeStackScreenProps<RootStackParamList, 'Checkout'>): React.JSX.Element {
   const theme = useTheme();
   const { api } = useAuth();
+  const { t, sar } = useLocale();
+  const methodLabel = (m: PaymentMethod): string => t(`method.${m}` as MessageKey);
   const { cart, dispatch } = useCart();
 
   const items = toOrderItems(cart);
@@ -99,7 +95,7 @@ export function CheckoutScreen({ route, navigation }: NativeStackScreenProps<Roo
         navigation.replace('PaymentProcessing', { orderId: order.id });
       }
     } catch (e) {
-      setPlaceError(e instanceof ApiError ? e.message : 'Could not place the order. Try again.');
+      setPlaceError(e instanceof ApiError ? e.message : t('checkout.placeFailed'));
       setBusy(false);
     }
   };
@@ -134,18 +130,18 @@ export function CheckoutScreen({ route, navigation }: NativeStackScreenProps<Roo
   const branchClosed = !!data?.branchOpen && !data.branchOpen.isOpen;
 
   return (
-    <Screen title="Checkout" onBack={() => navigation.goBack()}>
+    <Screen title={t('checkout.title')} onBack={() => navigation.goBack()}>
       <Toast visible={!!placeError} message={placeError ?? ''} tone="danger" onHide={() => setPlaceError(null)} />
       <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }}>
         <View style={{ flexDirection: 'row', gap: 8 }}>
-          {typeTab(ORDER_TYPE.PICKUP, 'Pickup')}
-          {typeTab(ORDER_TYPE.DELIVERY, 'Delivery')}
+          {typeTab(ORDER_TYPE.PICKUP, t('checkout.pickup'))}
+          {typeTab(ORDER_TYPE.DELIVERY, t('checkout.delivery'))}
         </View>
 
         {branchClosed ? (
           <Card style={{ borderColor: theme.colors.warning }}>
             <Text style={{ color: theme.colors.warning, fontWeight: '700' }}>
-              {data?.branchOpen.message ?? 'This branch is closed right now.'}
+              {data?.branchOpen.message ?? t('checkout.closedFallback')}
             </Text>
           </Card>
         ) : null}
@@ -153,7 +149,7 @@ export function CheckoutScreen({ route, navigation }: NativeStackScreenProps<Roo
         {isDelivery ? (
           <Card>
             <Text style={{ color: theme.colors.textMuted, fontSize: 13, fontWeight: '600', marginBottom: 8 }}>
-              Deliver to
+              {t('checkout.deliverTo')}
             </Text>
             {addresses.loading ? (
               <Skeleton height={40} />
@@ -189,45 +185,45 @@ export function CheckoutScreen({ route, navigation }: NativeStackScreenProps<Roo
                     </View>
                     <PressableScale
                       accessibilityRole="button"
-                      accessibilityLabel={`Edit ${a.label ?? 'address'}`}
+                      accessibilityLabel={`${t('common.edit')} ${a.label ?? ''}`}
                       onPress={() => navigation.navigate('AddAddress', { address: a })}
                     >
-                      <Text style={{ color: theme.colors.accent, fontWeight: '600' }}>Edit</Text>
+                      <Text style={{ color: theme.colors.accent, fontWeight: '600' }}>{t('common.edit')}</Text>
                     </PressableScale>
                   </PressableScale>
                 );
               })
             ) : (
-              <Text style={{ color: theme.colors.textMuted, marginBottom: 8 }}>No saved address yet.</Text>
+              <Text style={{ color: theme.colors.textMuted, marginBottom: 8 }}>{t('checkout.noAddress')}</Text>
             )}
             <PressableScale accessibilityRole="button" onPress={() => navigation.navigate('AddAddress')} style={{ marginTop: 6 }}>
-              <Text style={{ color: theme.colors.accent, fontWeight: '700' }}>+ Add a new address</Text>
+              <Text style={{ color: theme.colors.accent, fontWeight: '700' }}>{t('checkout.addAddress')}</Text>
             </PressableScale>
           </Card>
         ) : null}
 
         <Card>
-          <Text style={{ color: theme.colors.textMuted, fontSize: 13, fontWeight: '600', marginBottom: 8 }}>Promo code</Text>
+          <Text style={{ color: theme.colors.textMuted, fontSize: 13, fontWeight: '600', marginBottom: 8 }}>{t('checkout.promo')}</Text>
           {data?.coupon ? (
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
               <View style={{ flex: 1, paddingRight: 12 }}>
                 <Text style={{ color: theme.colors.success, fontWeight: '700' }}>{data.coupon.name}</Text>
                 <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>
-                  {data.coupon.code} · −{formatSar(data.coupon.discountMinor)}
+                  {data.coupon.code} · −{sar(data.coupon.discountMinor)}
                 </Text>
               </View>
-              <PressableScale accessibilityRole="button" accessibilityLabel="Remove coupon" onPress={removeCoupon}>
-                <Text style={{ color: theme.colors.danger, fontWeight: '700' }}>Remove</Text>
+              <PressableScale accessibilityRole="button" accessibilityLabel={t('common.remove')} onPress={removeCoupon}>
+                <Text style={{ color: theme.colors.danger, fontWeight: '700' }}>{t('common.remove')}</Text>
               </PressableScale>
             </View>
           ) : (
             <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 10 }}>
               <View style={{ flex: 1 }}>
-                <TextField label="" value={couponInput} onChangeText={setCouponInput} placeholder="Enter code" maxLength={40} />
+                <TextField label="" value={couponInput} onChangeText={setCouponInput} placeholder={t('checkout.enterCode')} maxLength={40} autoCapitalize="characters" />
               </View>
               <PressableScale
                 accessibilityRole="button"
-                accessibilityLabel="Apply coupon"
+                accessibilityLabel={t('common.apply')}
                 onPress={applyCoupon}
                 style={{
                   backgroundColor: theme.colors.surfaceAlt,
@@ -237,7 +233,7 @@ export function CheckoutScreen({ route, navigation }: NativeStackScreenProps<Roo
                   marginBottom: 16,
                 }}
               >
-                <Text style={{ color: theme.colors.text, fontWeight: '700' }}>Apply</Text>
+                <Text style={{ color: theme.colors.text, fontWeight: '700' }}>{t('common.apply')}</Text>
               </PressableScale>
             </View>
           )}
@@ -247,7 +243,7 @@ export function CheckoutScreen({ route, navigation }: NativeStackScreenProps<Roo
         </Card>
 
         <Card>
-          <Text style={{ color: theme.colors.text, fontWeight: '800', fontSize: 16, marginBottom: 12 }}>Order total</Text>
+          <Text style={{ color: theme.colors.text, fontWeight: '800', fontSize: 16, marginBottom: 12 }}>{t('checkout.orderTotal')}</Text>
           {loading ? (
             <View style={{ gap: 8 }}>
               <Skeleton height={16} />
@@ -255,35 +251,35 @@ export function CheckoutScreen({ route, navigation }: NativeStackScreenProps<Roo
               <Skeleton width="50%" height={20} />
             </View>
           ) : error ? (
-            <ErrorState title="Couldn’t price your order" message={error.message} actionLabel="Retry" onAction={reload} />
+            <ErrorState title={t('checkout.priceError')} message={error.message} actionLabel={t('common.retry')} onAction={reload} />
           ) : quote ? (
             <>
-              {row('Subtotal', formatSar(quote.subtotalMinor))}
-              {quote.discountMinor > 0 ? row('Discount', `- ${formatSar(quote.discountMinor)}`) : null}
-              {quote.deliveryFeeMinor > 0 ? row('Delivery', formatSar(quote.deliveryFeeMinor)) : null}
-              {row('VAT (incl.)', formatSar(quote.vatMinor))}
+              {row(t('checkout.subtotal'), sar(quote.subtotalMinor))}
+              {quote.discountMinor > 0 ? row(t('checkout.discount'), `- ${sar(quote.discountMinor)}`) : null}
+              {quote.deliveryFeeMinor > 0 ? row(t('checkout.deliveryFee'), sar(quote.deliveryFeeMinor)) : null}
+              {row(t('checkout.vat'), sar(quote.vatMinor))}
               <View style={{ height: 1, backgroundColor: theme.colors.border, marginVertical: 6 }} />
-              {row('Total', formatSar(quote.totalMinor), true)}
+              {row(t('checkout.total'), sar(quote.totalMinor), true)}
             </>
           ) : null}
         </Card>
 
         <Card>
-          <Text style={{ color: theme.colors.textMuted, fontSize: 13, fontWeight: '600', marginBottom: 8 }}>Payment method</Text>
+          <Text style={{ color: theme.colors.textMuted, fontSize: 13, fontWeight: '600', marginBottom: 8 }}>{t('checkout.paymentMethod')}</Text>
           <PressableScale accessibilityRole="button" onPress={() => setSheetOpen(true)} style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-            <Text style={{ color: theme.colors.text, fontSize: 16, fontWeight: '700' }}>{METHOD_LABELS[method]}</Text>
-            <Text style={{ color: theme.colors.accent, fontWeight: '600' }}>Change</Text>
+            <Text style={{ color: theme.colors.text, fontSize: 16, fontWeight: '700' }}>{methodLabel(method)}</Text>
+            <Text style={{ color: theme.colors.accent, fontWeight: '600' }}>{t('common.change')}</Text>
           </PressableScale>
         </Card>
 
         <Text style={{ color: theme.colors.textMuted, fontSize: 12, textAlign: 'center', paddingHorizontal: 12 }}>
-          Payment is confirmed by our server — never by this screen alone.
+          {t('checkout.serverNote')}
         </Text>
       </ScrollView>
 
       <View style={{ padding: 16, borderTopWidth: 1, borderTopColor: theme.colors.border }}>
         <PrimaryButton
-          label={needsAddress ? 'Add a delivery address' : quote ? `Place order · ${formatSar(quote.totalMinor)}` : 'Place order'}
+          label={needsAddress ? t('checkout.addDeliveryAddress') : quote ? t('checkout.placeWithTotal', { total: sar(quote.totalMinor) }) : t('checkout.place')}
           onPress={needsAddress ? () => navigation.navigate('AddAddress') : placeOrder}
           busy={busy}
           disabled={!quote || !!error || branchClosed}
@@ -291,7 +287,7 @@ export function CheckoutScreen({ route, navigation }: NativeStackScreenProps<Roo
       </View>
 
       <BottomSheet visible={sheetOpen} onClose={() => setSheetOpen(false)}>
-        <Text style={{ color: theme.colors.text, fontSize: 18, fontWeight: '700', marginBottom: 8 }}>Payment method</Text>
+        <Text style={{ color: theme.colors.text, fontSize: 18, fontWeight: '700', marginBottom: 8 }}>{t('checkout.paymentMethod')}</Text>
         {[PAYMENT_METHOD.CARD, PAYMENT_METHOD.MADA, PAYMENT_METHOD.APPLE_PAY, PAYMENT_METHOD.CASH_ON_DELIVERY].map((m) => (
           <PressableScale
             key={m}
@@ -302,7 +298,7 @@ export function CheckoutScreen({ route, navigation }: NativeStackScreenProps<Roo
             }}
             style={{ paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: theme.colors.border, flexDirection: 'row', justifyContent: 'space-between' }}
           >
-            <Text style={{ color: theme.colors.text, fontSize: 16 }}>{METHOD_LABELS[m]}</Text>
+            <Text style={{ color: theme.colors.text, fontSize: 16 }}>{methodLabel(m)}</Text>
             {method === m ? <Text style={{ color: theme.colors.primary, fontWeight: '800' }}>✓</Text> : null}
           </PressableScale>
         ))}

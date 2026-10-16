@@ -7,9 +7,9 @@ import type { ConfigBanner } from '../api/types';
 import { useAuth } from '../auth/AuthProvider';
 import { Card, Screen } from '../components/ui';
 import { useAsync } from '../hooks/useAsync';
+import { useLocale } from '../i18n/LocaleProvider';
 import { EmptyState, ErrorState, PressableScale, Skeleton, Stagger } from '../motion';
 import { RootStackParamList } from '../navigation/types';
-import { formatSar } from '../util/money';
 import { useTheme } from '../theme/theme';
 
 /** Resolves a banner image path against the API origin; absolute URLs pass through. */
@@ -25,6 +25,7 @@ function imageSource(url: string): string {
 export function BranchesScreen({ navigation }: NativeStackScreenProps<RootStackParamList, 'Branches'>): React.JSX.Element {
   const theme = useTheme();
   const { api } = useAuth();
+  const { t, sar, lang, toggle } = useLocale();
   const { data, loading, error, reload } = useAsync(() => api.listBranches(), []);
   // Banners are a nice-to-have; a failure here must never cost the branch list.
   const config = useAsync(() => api.config(), []);
@@ -35,11 +36,14 @@ export function BranchesScreen({ navigation }: NativeStackScreenProps<RootStackP
 
   const headerLinks = (
     <View style={{ flexDirection: 'row', gap: 14, alignItems: 'center' }}>
-      <PressableScale accessibilityRole="button" accessibilityLabel="Offers" onPress={() => navigation.navigate('Offers')}>
-        <Text style={{ color: theme.colors.accent, fontWeight: '600' }}>Offers</Text>
+      <PressableScale accessibilityRole="button" accessibilityLabel={t('lang.toggle')} onPress={toggle} style={{ minHeight: theme.touchTarget, justifyContent: 'center' }}>
+        <Text style={{ color: theme.colors.textMuted, fontWeight: '700' }}>{t('lang.toggle')}</Text>
       </PressableScale>
-      <PressableScale accessibilityRole="button" accessibilityLabel="Account" onPress={() => navigation.navigate('Account')}>
-        <Text style={{ color: theme.colors.textMuted, fontWeight: '600' }}>Account</Text>
+      <PressableScale accessibilityRole="button" accessibilityLabel={t('branches.offers')} onPress={() => navigation.navigate('Offers')}>
+        <Text style={{ color: theme.colors.accent, fontWeight: '600' }}>{t('branches.offers')}</Text>
+      </PressableScale>
+      <PressableScale accessibilityRole="button" accessibilityLabel={t('branches.account')} onPress={() => navigation.navigate('Account')}>
+        <Text style={{ color: theme.colors.textMuted, fontWeight: '600' }}>{t('branches.account')}</Text>
       </PressableScale>
     </View>
   );
@@ -57,7 +61,7 @@ export function BranchesScreen({ navigation }: NativeStackScreenProps<RootStackP
             accessibilityRole="button"
             // The title is the accessible name — not baked into the image — so a
             // screen reader and an Arabic reader both get the words.
-            accessibilityLabel={b.title ?? 'Offer'}
+            accessibilityLabel={b.title ?? t('branches.offers')}
             onPress={() => navigation.navigate('Offers')}
             style={{
               width: 300,
@@ -97,7 +101,7 @@ export function BranchesScreen({ navigation }: NativeStackScreenProps<RootStackP
     ) : null;
 
   return (
-    <Screen title="Farooj Almasi" right={headerLinks}>
+    <Screen title={t('branches.title')} right={headerLinks}>
       {loading ? (
         <View style={{ padding: 20, gap: 12 }}>
           {[0, 1, 2].map((i) => (
@@ -105,9 +109,9 @@ export function BranchesScreen({ navigation }: NativeStackScreenProps<RootStackP
           ))}
         </View>
       ) : error ? (
-        <ErrorState title="Couldn’t load branches" message={error.message} actionLabel="Retry" onAction={reload} />
+        <ErrorState title={t('branches.errorTitle')} message={error.message} actionLabel={t('common.retry')} onAction={reload} />
       ) : !data || data.length === 0 ? (
-        <EmptyState title="No branches yet" message="Please check back soon." />
+        <EmptyState title={t('branches.emptyTitle')} message={t('branches.emptyBody')} />
       ) : (
         <ScrollView contentContainerStyle={{ paddingVertical: 20, gap: 12 }}>
           {bannerStrip}
@@ -120,17 +124,19 @@ export function BranchesScreen({ navigation }: NativeStackScreenProps<RootStackP
                   onPress={() => navigation.navigate('Menu', { branchId: branch.id, branchName: branch.name })}
                 >
                   <Card>
-                    <Text style={{ color: theme.colors.text, fontSize: 17, fontWeight: '700' }}>{branch.name}</Text>
+                    <Text style={{ color: theme.colors.text, fontSize: 17, fontWeight: '700' }}>
+                      {lang === 'ar' && branch.nameAr ? branch.nameAr : branch.name}
+                    </Text>
                     <Text style={{ color: theme.colors.textMuted, marginTop: 4 }}>
-                      {[branch.district, branch.city].filter(Boolean).join(', ')}
+                      {[branch.district, branch.city].filter(Boolean).join('، ')}
                     </Text>
                     <View style={{ flexDirection: 'row', marginTop: 8, gap: 8, flexWrap: 'wrap' }}>
                       {!branch.isAcceptingOrders ? (
-                        <Text style={{ color: theme.colors.danger, fontWeight: '600' }}>Closed now</Text>
+                        <Text style={{ color: theme.colors.danger, fontWeight: '600' }}>{t('branches.closedNow')}</Text>
                       ) : (
                         <>
-                          <Text style={{ color: theme.colors.textMuted }}>Delivery {formatSar(branch.deliveryFeeMinor)}</Text>
-                          <Text style={{ color: theme.colors.textMuted }}>· Min {formatSar(branch.minOrderMinor)}</Text>
+                          <Text style={{ color: theme.colors.textMuted }}>{t('branches.delivery', { fee: sar(branch.deliveryFeeMinor) })}</Text>
+                          <Text style={{ color: theme.colors.textMuted }}>· {t('branches.min', { min: sar(branch.minOrderMinor) })}</Text>
                         </>
                       )}
                     </View>

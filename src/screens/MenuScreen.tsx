@@ -6,9 +6,9 @@ import { useAuth } from '../auth/AuthProvider';
 import { useCart } from '../cart/CartProvider';
 import { Card, Screen } from '../components/ui';
 import { useAsync } from '../hooks/useAsync';
+import { useLocale } from '../i18n/LocaleProvider';
 import { BottomSheet, CartBadge, EmptyState, ErrorState, PressableScale, Skeleton } from '../motion';
 import { RootStackParamList } from '../navigation/types';
-import { formatSar } from '../util/money';
 import { useTheme } from '../theme/theme';
 import type { MenuProduct } from '../api/types';
 
@@ -24,6 +24,7 @@ function fromPriceMinor(product: MenuProduct): number {
 export function MenuScreen({ route, navigation }: NativeStackScreenProps<RootStackParamList, 'Menu'>): React.JSX.Element {
   const theme = useTheme();
   const { api } = useAuth();
+  const { t, sar, lang } = useLocale();
   const { cart, count, dispatch } = useCart();
   const { branchId, branchName } = route.params;
   const { data, loading, error, reload } = useAsync(() => api.menu(branchId), [branchId]);
@@ -58,7 +59,7 @@ export function MenuScreen({ route, navigation }: NativeStackScreenProps<RootSta
   };
 
   const cartButton = (
-    <PressableScale accessibilityRole="button" accessibilityLabel="View cart" onPress={() => navigation.navigate('Cart')}>
+    <PressableScale accessibilityRole="button" accessibilityLabel={t('menu.viewCart')} onPress={() => navigation.navigate('Cart')}>
       <View>
         <Text style={{ fontSize: 24 }}>🛒</Text>
         <View style={{ position: 'absolute', top: -6, right: -10 }}>
@@ -77,15 +78,15 @@ export function MenuScreen({ route, navigation }: NativeStackScreenProps<RootSta
           ))}
         </View>
       ) : error ? (
-        <ErrorState title="Couldn’t load the menu" message={error.message} actionLabel="Retry" onAction={reload} />
+        <ErrorState title={t('menu.errorTitle')} message={error.message} actionLabel={t('common.retry')} onAction={reload} />
       ) : !data || data.categories.length === 0 ? (
-        <EmptyState title="Menu is empty" message="This branch has nothing available right now." />
+        <EmptyState title={t('menu.emptyTitle')} message={t('menu.emptyBody')} />
       ) : (
         <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: count > 0 ? 96 : 24 }}>
           {data.categories.map((category) => (
             <View key={category.id} style={{ marginBottom: 20 }}>
               <Text style={{ color: theme.colors.text, fontSize: 18, fontWeight: '800', marginBottom: 10 }}>
-                {category.name}
+                {lang === 'ar' && category.nameAr ? category.nameAr : category.name}
               </Text>
               <View style={{ gap: 10 }}>
                 {category.products.map((product) => {
@@ -94,19 +95,21 @@ export function MenuScreen({ route, navigation }: NativeStackScreenProps<RootSta
                     <Card key={product.id}>
                       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                         <View style={{ flex: 1, paddingRight: 12 }}>
-                          <Text style={{ color: theme.colors.text, fontSize: 16, fontWeight: '700' }}>{product.name}</Text>
+                          <Text style={{ color: theme.colors.text, fontSize: 16, fontWeight: '700' }}>
+                            {lang === 'ar' && product.nameAr ? product.nameAr : product.name}
+                          </Text>
                           {product.description ? (
                             <Text style={{ color: theme.colors.textMuted, marginTop: 2 }} numberOfLines={2}>
                               {product.description}
                             </Text>
                           ) : null}
                           <Text style={{ color: theme.colors.primary, fontWeight: '700', marginTop: 6 }}>
-                            {hasVariants ? `from ${formatSar(fromPriceMinor(product))}` : formatSar(product.priceMinor)}
+                            {hasVariants ? t('menu.from', { price: sar(fromPriceMinor(product)) }) : sar(product.priceMinor)}
                           </Text>
                         </View>
                         <PressableScale
                           accessibilityRole="button"
-                          accessibilityLabel={`Add ${product.name}`}
+                          accessibilityLabel={t('menu.add', { name: lang === 'ar' && product.nameAr ? product.nameAr : product.name })}
                           onPress={() => onAdd(product)}
                           style={{
                             backgroundColor: theme.colors.primary,
@@ -144,22 +147,24 @@ export function MenuScreen({ route, navigation }: NativeStackScreenProps<RootSta
               justifyContent: 'space-between',
             }}
           >
-            <Text style={{ color: theme.colors.onPrimary, fontWeight: '800', fontSize: 16 }}>View cart</Text>
-            <Text style={{ color: theme.colors.onPrimary, fontWeight: '800', fontSize: 16 }}>{count} item{count === 1 ? '' : 's'}</Text>
+            <Text style={{ color: theme.colors.onPrimary, fontWeight: '800', fontSize: 16 }}>{t('menu.viewCart')}</Text>
+            <Text style={{ color: theme.colors.onPrimary, fontWeight: '800', fontSize: 16 }}>
+              {count === 1 ? t('menu.item', { count }) : t('menu.items', { count })}
+            </Text>
           </PressableScale>
         </View>
       ) : null}
 
       <BottomSheet visible={!!variantFor} onClose={() => setVariantFor(null)}>
         <Text style={{ color: theme.colors.text, fontSize: 18, fontWeight: '800', marginBottom: 4 }}>
-          {variantFor?.name}
+          {variantFor ? (lang === 'ar' && variantFor.nameAr ? variantFor.nameAr : variantFor.name) : ''}
         </Text>
-        <Text style={{ color: theme.colors.textMuted, marginBottom: 12 }}>Choose a size</Text>
+        <Text style={{ color: theme.colors.textMuted, marginBottom: 12 }}>{t('menu.chooseSize')}</Text>
         {variantFor?.variants.map((v) => (
           <PressableScale
             key={v.id}
             accessibilityRole="button"
-            accessibilityLabel={`${variantFor.name}, ${v.name}, ${formatSar(v.priceMinor)}`}
+            accessibilityLabel={`${variantFor.name}, ${v.name}, ${sar(v.priceMinor)}`}
             onPress={() => {
               const product = variantFor;
               setVariantFor(null);
@@ -175,7 +180,7 @@ export function MenuScreen({ route, navigation }: NativeStackScreenProps<RootSta
             }}
           >
             <Text style={{ color: theme.colors.text, fontSize: 16, fontWeight: '600' }}>{v.name}</Text>
-            <Text style={{ color: theme.colors.primary, fontWeight: '700' }}>{formatSar(v.priceMinor)}</Text>
+            <Text style={{ color: theme.colors.primary, fontWeight: '700' }}>{sar(v.priceMinor)}</Text>
           </PressableScale>
         ))}
       </BottomSheet>
