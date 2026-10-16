@@ -59,7 +59,12 @@ export function MenuScreen({ route, navigation }: NativeStackScreenProps<RootSta
   };
 
   const cartButton = (
-    <PressableScale accessibilityRole="button" accessibilityLabel={t('menu.viewCart')} onPress={() => navigation.navigate('Cart')}>
+    <PressableScale
+      accessibilityRole="button"
+      accessibilityLabel={count === 1 ? t('menu.item', { count }) : t('menu.items', { count })}
+      onPress={() => navigation.navigate('Cart')}
+      style={{ minWidth: theme.touchTarget, minHeight: theme.touchTarget, alignItems: 'center', justifyContent: 'center' }}
+    >
       <View>
         <Text style={{ fontSize: 24 }}>🛒</Text>
         <View style={{ position: 'absolute', top: -6, right: -10 }}>
@@ -113,9 +118,9 @@ export function MenuScreen({ route, navigation }: NativeStackScreenProps<RootSta
                           onPress={() => onAdd(product)}
                           style={{
                             backgroundColor: theme.colors.primary,
-                            width: 40,
-                            height: 40,
-                            borderRadius: 20,
+                            width: 44,
+                            height: 44,
+                            borderRadius: 22,
                             alignItems: 'center',
                             justifyContent: 'center',
                           }}

@@ -44,6 +44,7 @@ export function TextField({
       <TextInput
         value={value}
         onChangeText={onChangeText}
+        accessibilityLabel={label || placeholder}
         placeholder={placeholder}
         placeholderTextColor={theme.colors.textMuted}
         keyboardType={keyboardType}
@@ -125,6 +126,7 @@ export function Screen({
         >
           {onBack ? <IconButton glyph={dir === 'rtl' ? '›' : '‹'} accessibilityLabel={t('common.back')} onPress={onBack} /> : null}
           <Text
+            accessibilityRole="header"
             style={{ color: theme.colors.text, flex: 1, textAlign: dir === 'rtl' ? 'right' : 'left', ...theme.type.title }}
             numberOfLines={1}
           >
@@ -266,7 +268,7 @@ export function SectionHeader({
         marginBottom: theme.space.sm,
       }}
     >
-      <Text style={{ color: theme.colors.text, ...theme.type.heading }}>{title}</Text>
+      <Text accessibilityRole="header" style={{ color: theme.colors.text, ...theme.type.heading }}>{title}</Text>
       {actionLabel && onAction ? (
         <PressableScale accessibilityRole="button" accessibilityLabel={actionLabel} onPress={onAction} style={{ minHeight: theme.touchTarget, justifyContent: 'center' }}>
           <Text style={{ color: theme.colors.accent, ...theme.type.label }}>{actionLabel}</Text>
@@ -294,7 +296,8 @@ export function Chip({
       onPress={onPress}
       style={{
         paddingHorizontal: 16,
-        paddingVertical: 9,
+        minHeight: theme.touchTarget,
+        justifyContent: 'center',
         borderRadius: theme.radius.pill,
         backgroundColor: selected ? theme.colors.primary : theme.colors.surfaceAlt,
         borderWidth: 1,

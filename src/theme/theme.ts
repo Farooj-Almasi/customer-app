@@ -77,7 +77,6 @@ const RED = '#C0202C';
 const RED_DARK = '#E24A54';
 const GREEN = '#3F7F3A';
 const GREEN_BRIGHT = '#5AA152';
-const ORANGE = '#F47C20';
 
 const light: Theme['colors'] = {
   background: '#FBF7F5',
@@ -91,9 +90,12 @@ const light: Theme['colors'] = {
   onPrimary: '#FFFFFF',
   secondary: GREEN,
   accent: GREEN,
-  success: '#2E9E5B',
-  danger: '#D6453B',
-  warning: ORANGE,
+  // Semantic tones chosen to clear WCAG AA (4.5:1) as text on both the white
+  // surface and the surfaceAlt pill ground — a brand-bright orange reads at
+  // only 2.7:1, so warning is darkened for use as text.
+  success: '#217A47',
+  danger: '#BE3A30',
+  warning: '#9E560C',
   progress: RED,
   skeleton: '#EFE6EC',
   skeletonHighlight: '#F8F1F5',
