@@ -5,7 +5,8 @@ import { Text, View } from 'react-native';
 import { ApiError } from '../api/http';
 import { useAuth } from '../auth/AuthProvider';
 import { PrimaryButton, Screen, TextField } from '../components/ui';
-import { Toast } from '../motion';
+import { useLocale } from '../i18n/LocaleProvider';
+import { PressableScale, Toast } from '../motion';
 import { RootStackParamList } from '../navigation/types';
 import { useTheme } from '../theme/theme';
 
@@ -13,6 +14,7 @@ import { useTheme } from '../theme/theme';
 export function PhoneScreen({ navigation }: NativeStackScreenProps<RootStackParamList, 'Phone'>): React.JSX.Element {
   const theme = useTheme();
   const { api } = useAuth();
+  const { t, toggle } = useLocale();
   const [phone, setPhone] = useState('+9665');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -26,21 +28,27 @@ export function PhoneScreen({ navigation }: NativeStackScreenProps<RootStackPara
       await api.requestOtp(phone);
       navigation.navigate('Otp', { phone });
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Could not send the code. Try again.');
+      setError(e instanceof ApiError ? e.message : t('signin.sendFailed'));
     } finally {
       setBusy(false);
     }
   };
 
+  const langToggle = (
+    <PressableScale accessibilityRole="button" accessibilityLabel={t('lang.toggle')} onPress={toggle} style={{ minHeight: theme.touchTarget, justifyContent: 'center' }}>
+      <Text style={{ color: theme.colors.textMuted, fontWeight: '700' }}>{t('lang.toggle')}</Text>
+    </PressableScale>
+  );
+
   return (
-    <Screen title="Sign in">
+    <Screen title={t('signin.title')} right={langToggle}>
       <Toast visible={!!error} message={error ?? ''} tone="danger" onHide={() => setError(null)} />
       <View style={{ padding: 20 }}>
         <Text style={{ color: theme.colors.textMuted, fontSize: 15, lineHeight: 22, marginBottom: 24 }}>
-          Enter your mobile number and we’ll text you a login code.
+          {t('signin.intro')}
         </Text>
         <TextField
-          label="Mobile number"
+          label={t('signin.mobile')}
           value={phone}
           onChangeText={setPhone}
           keyboardType="phone-pad"
@@ -48,7 +56,7 @@ export function PhoneScreen({ navigation }: NativeStackScreenProps<RootStackPara
           autoFocus
           placeholder="+9665XXXXXXXX"
         />
-        <PrimaryButton label="Send code" onPress={submit} busy={busy} disabled={!valid} />
+        <PrimaryButton label={t('signin.sendCode')} onPress={submit} busy={busy} disabled={!valid} />
       </View>
     </Screen>
   );

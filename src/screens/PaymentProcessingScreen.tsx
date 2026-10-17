@@ -4,6 +4,7 @@ import { Text, View } from 'react-native';
 
 import { useAuth } from '../auth/AuthProvider';
 import { PrimaryButton, Screen } from '../components/ui';
+import { useLocale } from '../i18n/LocaleProvider';
 import { PaymentStateView } from '../features/payment/PaymentStateView';
 import { paymentVisualForServerStatus } from '../features/payment/payment-state.model';
 import { PAYMENT_METHOD, PAYMENT_STATUS, PaymentStatus } from '../types/backend';
@@ -23,6 +24,7 @@ export function PaymentProcessingScreen({
 }: NativeStackScreenProps<RootStackParamList, 'PaymentProcessing'>): React.JSX.Element {
   const theme = useTheme();
   const { api } = useAuth();
+  const { t } = useLocale();
   const { orderId } = route.params;
   const [status, setStatus] = useState<PaymentStatus>(PAYMENT_STATUS.PENDING);
   const started = useRef(false);
@@ -78,16 +80,16 @@ export function PaymentProcessingScreen({
   const visual = paymentVisualForServerStatus(status).visual;
 
   return (
-    <Screen title="Payment">
+    <Screen title={t('payment.title')}>
       <View style={{ flex: 1, justifyContent: 'center', padding: 20 }}>
         <PaymentStateView status={status} />
         <Text style={{ color: theme.colors.textMuted, fontSize: 12, textAlign: 'center', marginTop: 8 }}>
-          Your bank confirms this with us directly. You can safely track your order while it finishes.
+          {t('payment.bankNote')}
         </Text>
         <View style={{ marginTop: 24, gap: 10 }}>
-          <PrimaryButton label="Track my order" onPress={() => navigation.replace('OrderTracking', { orderId })} />
+          <PrimaryButton label={t('payment.track')} onPress={() => navigation.replace('OrderTracking', { orderId })} />
           {visual === 'failed' || visual === 'cancelled' ? (
-            <PrimaryButton label="Back to orders" onPress={() => navigation.replace('Orders')} />
+            <PrimaryButton label={t('payment.backToOrders')} onPress={() => navigation.replace('Orders')} />
           ) : null}
         </View>
       </View>

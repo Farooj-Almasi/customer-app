@@ -1,41 +1,79 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import React from 'react';
+import React, { useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 
 import { useAuth } from '../auth/AuthProvider';
 import { useCart } from '../cart/CartProvider';
-import { Card, Screen } from '../components/ui';
+import { Card, Chip, Screen, TextField } from '../components/ui';
 import { useAsync } from '../hooks/useAsync';
-import { CartBadge, EmptyState, ErrorState, PressableScale, Skeleton } from '../motion';
+import { useLocale } from '../i18n/LocaleProvider';
+import { filterMenu } from '../menu/filter';
+import { BottomSheet, CartBadge, EmptyState, ErrorState, PressableScale, Skeleton } from '../motion';
 import { RootStackParamList } from '../navigation/types';
-import { formatSar } from '../util/money';
 import { useTheme } from '../theme/theme';
 import type { MenuProduct } from '../api/types';
 
-/** A branch menu: browse categories/products and add to cart. */
+/** The lowest variant price, for the "from SAR x" label on a product with sizes. */
+function fromPriceMinor(product: MenuProduct): number {
+  if (product.variants.length === 0) {
+    return product.priceMinor;
+  }
+  return Math.min(...product.variants.map((v) => v.priceMinor));
+}
+
+/** A branch menu: browse categories/products and add to cart (choosing a size when offered). */
 export function MenuScreen({ route, navigation }: NativeStackScreenProps<RootStackParamList, 'Menu'>): React.JSX.Element {
   const theme = useTheme();
   const { api } = useAuth();
+  const { t, sar, lang } = useLocale();
   const { cart, count, dispatch } = useCart();
   const { branchId, branchName } = route.params;
   const { data, loading, error, reload } = useAsync(() => api.menu(branchId), [branchId]);
 
-  const add = (product: MenuProduct): void => {
+  // The product whose size the customer is choosing, if any.
+  const [variantFor, setVariantFor] = useState<MenuProduct | null>(null);
+  // Storefront controls: free-text search and a selected category (null = All).
+  const [query, setQuery] = useState('');
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+
+  const categories = data?.categories ?? [];
+  const visible = filterMenu(categories, query, activeCategory);
+  const catName = (c: { name: string; nameAr: string | null }): string =>
+    lang === 'ar' && c.nameAr ? c.nameAr : c.name;
+
+  const addLine = (product: MenuProduct, variant?: { id: string; name: string; priceMinor: number }): void => {
     dispatch({
       type: 'ADD',
       branchId,
       line: {
         productId: product.id,
         productName: product.name,
-        unitPriceMinor: product.priceMinor,
+        productVariantId: variant?.id,
+        variantName: variant?.name,
+        unitPriceMinor: variant ? variant.priceMinor : product.priceMinor,
         addonIds: [],
         addonNames: [],
       },
     });
   };
 
+  // Products with variants must have one chosen — the price depends on it, and
+  // the backend rejects a cart line whose variant it cannot find.
+  const onAdd = (product: MenuProduct): void => {
+    if (product.variants.length > 0) {
+      setVariantFor(product);
+      return;
+    }
+    addLine(product);
+  };
+
   const cartButton = (
-    <PressableScale accessibilityRole="button" accessibilityLabel="View cart" onPress={() => navigation.navigate('Cart')}>
+    <PressableScale
+      accessibilityRole="button"
+      accessibilityLabel={count === 1 ? t('menu.item', { count }) : t('menu.items', { count })}
+      onPress={() => navigation.navigate('Cart')}
+      style={{ minWidth: theme.touchTarget, minHeight: theme.touchTarget, alignItems: 'center', justifyContent: 'center' }}
+    >
       <View>
         <Text style={{ fontSize: 24 }}>🛒</Text>
         <View style={{ position: 'absolute', top: -6, right: -10 }}>
@@ -54,53 +92,84 @@ export function MenuScreen({ route, navigation }: NativeStackScreenProps<RootSta
           ))}
         </View>
       ) : error ? (
-        <ErrorState title="Couldn’t load the menu" message={error.message} actionLabel="Retry" onAction={reload} />
-      ) : !data || data.categories.length === 0 ? (
-        <EmptyState title="Menu is empty" message="This branch has nothing available right now." />
+        <ErrorState title={t('menu.errorTitle')} message={error.message} actionLabel={t('common.retry')} onAction={reload} />
+      ) : !data || categories.length === 0 ? (
+        <EmptyState title={t('menu.emptyTitle')} message={t('menu.emptyBody')} />
       ) : (
-        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: count > 0 ? 96 : 24 }}>
-          {data.categories.map((category) => (
+        <>
+          <View style={{ paddingHorizontal: 16, paddingTop: 4 }}>
+            <TextField label="" value={query} onChangeText={setQuery} placeholder={t('menu.search')} />
+          </View>
+          <View style={{ height: 48 }}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingHorizontal: 16, gap: 8, alignItems: 'center' }}
+            >
+              <Chip label={t('menu.all')} selected={activeCategory === null} onPress={() => setActiveCategory(null)} />
+              {categories.map((c) => (
+                <Chip
+                  key={c.id}
+                  label={catName(c)}
+                  selected={activeCategory === c.id}
+                  onPress={() => setActiveCategory((cur) => (cur === c.id ? null : c.id))}
+                />
+              ))}
+            </ScrollView>
+          </View>
+          {visible.length === 0 ? (
+            <EmptyState title={t('menu.noResultsTitle')} message={t('menu.noResultsBody')} />
+          ) : (
+            <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: count > 0 ? 96 : 24 }}>
+              {visible.map((category) => (
             <View key={category.id} style={{ marginBottom: 20 }}>
               <Text style={{ color: theme.colors.text, fontSize: 18, fontWeight: '800', marginBottom: 10 }}>
-                {category.name}
+                {lang === 'ar' && category.nameAr ? category.nameAr : category.name}
               </Text>
               <View style={{ gap: 10 }}>
-                {category.products.map((product) => (
-                  <Card key={product.id}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                      <View style={{ flex: 1, paddingRight: 12 }}>
-                        <Text style={{ color: theme.colors.text, fontSize: 16, fontWeight: '700' }}>{product.name}</Text>
-                        {product.description ? (
-                          <Text style={{ color: theme.colors.textMuted, marginTop: 2 }} numberOfLines={2}>
-                            {product.description}
+                {category.products.map((product) => {
+                  const hasVariants = product.variants.length > 0;
+                  return (
+                    <Card key={product.id} elevated>
+                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <View style={{ flex: 1, paddingRight: 12 }}>
+                          <Text style={{ color: theme.colors.text, fontSize: 16, fontWeight: '700' }}>
+                            {lang === 'ar' && product.nameAr ? product.nameAr : product.name}
                           </Text>
-                        ) : null}
-                        <Text style={{ color: theme.colors.primary, fontWeight: '700', marginTop: 6 }}>
-                          {formatSar(product.priceMinor)}
-                        </Text>
+                          {product.description ? (
+                            <Text style={{ color: theme.colors.textMuted, marginTop: 2 }} numberOfLines={2}>
+                              {product.description}
+                            </Text>
+                          ) : null}
+                          <Text style={{ color: theme.colors.primary, fontWeight: '700', marginTop: 6 }}>
+                            {hasVariants ? t('menu.from', { price: sar(fromPriceMinor(product)) }) : sar(product.priceMinor)}
+                          </Text>
+                        </View>
+                        <PressableScale
+                          accessibilityRole="button"
+                          accessibilityLabel={t('menu.add', { name: lang === 'ar' && product.nameAr ? product.nameAr : product.name })}
+                          onPress={() => onAdd(product)}
+                          style={{
+                            backgroundColor: theme.colors.primary,
+                            width: 44,
+                            height: 44,
+                            borderRadius: 22,
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                        >
+                          <Text style={{ color: theme.colors.onPrimary, fontSize: 24, fontWeight: '700' }}>+</Text>
+                        </PressableScale>
                       </View>
-                      <PressableScale
-                        accessibilityRole="button"
-                        accessibilityLabel={`Add ${product.name}`}
-                        onPress={() => add(product)}
-                        style={{
-                          backgroundColor: theme.colors.primary,
-                          width: 40,
-                          height: 40,
-                          borderRadius: 20,
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        }}
-                      >
-                        <Text style={{ color: theme.colors.onPrimary, fontSize: 24, fontWeight: '700' }}>+</Text>
-                      </PressableScale>
-                    </View>
-                  </Card>
-                ))}
+                    </Card>
+                  );
+                })}
               </View>
             </View>
-          ))}
-        </ScrollView>
+              ))}
+            </ScrollView>
+          )}
+        </>
       )}
 
       {count > 0 && cart.branchId === branchId ? (
@@ -118,11 +187,43 @@ export function MenuScreen({ route, navigation }: NativeStackScreenProps<RootSta
               justifyContent: 'space-between',
             }}
           >
-            <Text style={{ color: theme.colors.onPrimary, fontWeight: '800', fontSize: 16 }}>View cart</Text>
-            <Text style={{ color: theme.colors.onPrimary, fontWeight: '800', fontSize: 16 }}>{count} item{count === 1 ? '' : 's'}</Text>
+            <Text style={{ color: theme.colors.onPrimary, fontWeight: '800', fontSize: 16 }}>{t('menu.viewCart')}</Text>
+            <Text style={{ color: theme.colors.onPrimary, fontWeight: '800', fontSize: 16 }}>
+              {count === 1 ? t('menu.item', { count }) : t('menu.items', { count })}
+            </Text>
           </PressableScale>
         </View>
       ) : null}
+
+      <BottomSheet visible={!!variantFor} onClose={() => setVariantFor(null)}>
+        <Text style={{ color: theme.colors.text, fontSize: 18, fontWeight: '800', marginBottom: 4 }}>
+          {variantFor ? (lang === 'ar' && variantFor.nameAr ? variantFor.nameAr : variantFor.name) : ''}
+        </Text>
+        <Text style={{ color: theme.colors.textMuted, marginBottom: 12 }}>{t('menu.chooseSize')}</Text>
+        {variantFor?.variants.map((v) => (
+          <PressableScale
+            key={v.id}
+            accessibilityRole="button"
+            accessibilityLabel={`${variantFor.name}, ${v.name}, ${sar(v.priceMinor)}`}
+            onPress={() => {
+              const product = variantFor;
+              setVariantFor(null);
+              addLine(product, v);
+            }}
+            style={{
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              paddingVertical: 14,
+              borderBottomWidth: 1,
+              borderBottomColor: theme.colors.border,
+            }}
+          >
+            <Text style={{ color: theme.colors.text, fontSize: 16, fontWeight: '600' }}>{v.name}</Text>
+            <Text style={{ color: theme.colors.primary, fontWeight: '700' }}>{sar(v.priceMinor)}</Text>
+          </PressableScale>
+        ))}
+      </BottomSheet>
     </Screen>
   );
 }

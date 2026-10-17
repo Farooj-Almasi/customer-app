@@ -6,8 +6,10 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AuthProvider } from './src/auth/AuthProvider';
 import { CartProvider } from './src/cart/CartProvider';
+import { LocaleProvider } from './src/i18n/LocaleProvider';
 import { MotionProvider } from './src/motion';
 import { LaunchScreen } from './src/launch/LaunchScreen';
+import { RealtimeProvider } from './src/realtime/RealtimeProvider';
 import { RootNavigator } from './src/navigation/RootNavigator';
 
 /**
@@ -26,13 +28,17 @@ export default function App(): React.JSX.Element {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <MotionProvider>
-          <AuthProvider>
-            <CartProvider>
-              <StatusBar style="auto" />
-              <RootNavigator />
-              {!launched ? <LaunchScreen onFinish={() => setLaunched(true)} /> : null}
-            </CartProvider>
-          </AuthProvider>
+          <LocaleProvider>
+            <AuthProvider>
+              <RealtimeProvider>
+                <CartProvider>
+                  <StatusBar style="auto" />
+                  <RootNavigator />
+                  {!launched ? <LaunchScreen onFinish={() => setLaunched(true)} /> : null}
+                </CartProvider>
+              </RealtimeProvider>
+            </AuthProvider>
+          </LocaleProvider>
         </MotionProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

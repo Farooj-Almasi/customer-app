@@ -13,6 +13,8 @@ import Svg, { Path } from 'react-native-svg';
 import { useMotion } from '../../motion/MotionProvider';
 import { PaymentStatus } from '../../types/backend';
 import { PaymentVisual, paymentVisualForServerStatus } from './payment-state.model';
+import { useLocale } from '../../i18n/LocaleProvider';
+import type { MessageKey } from '../../i18n/messages';
 import { Theme, useTheme } from '../../theme/theme';
 
 export interface PaymentStateViewProps {
@@ -146,14 +148,23 @@ function Glyph({ visual, color }: { visual: PaymentVisual; color: string }): Rea
 export function PaymentStateView({ status }: PaymentStateViewProps): React.JSX.Element {
   const theme = useTheme();
   const { reduceMotion } = useMotion();
+  const { t } = useLocale();
   const view = paymentVisualForServerStatus(status);
   const color = iconColor(theme, view.visual);
+
+  // Translate from the same visual the model chose. The model's English copy
+  // stays as the structural source (and the test fixture); the words shown are
+  // the localized ones.
+  const base =
+    view.visual === 'refunded' ? `payment.refund.${view.refundDetail ?? 'full'}` : `payment.${view.visual}`;
+  const title = t(`${base}.title` as MessageKey);
+  const body = t(`${base}.body` as MessageKey);
 
   return (
     <View
       accessible
       accessibilityLiveRegion="polite"
-      accessibilityLabel={`${view.title}. ${view.body}`}
+      accessibilityLabel={`${title}. ${body}`}
       style={{ alignItems: 'center', padding: 24 }}
     >
       {view.visual === 'processing' ? (
@@ -172,7 +183,7 @@ export function PaymentStateView({ status }: PaymentStateViewProps): React.JSX.E
           textAlign: 'center',
         }}
       >
-        {view.title}
+        {title}
       </Text>
       <Text
         style={{
@@ -184,7 +195,7 @@ export function PaymentStateView({ status }: PaymentStateViewProps): React.JSX.E
           maxWidth: 300,
         }}
       >
-        {view.body}
+        {body}
       </Text>
     </View>
   );

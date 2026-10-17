@@ -5,10 +5,14 @@ import React from 'react';
 import { useAuth } from '../auth/AuthProvider';
 import { useReducedMotion } from '../motion';
 import { RootStackParamList } from './types';
+import { AccountScreen } from '../screens/AccountScreen';
 import { BranchesScreen } from '../screens/BranchesScreen';
 import { CartScreen } from '../screens/CartScreen';
 import { CheckoutScreen } from '../screens/CheckoutScreen';
+import { LoyaltyScreen } from '../screens/LoyaltyScreen';
 import { MenuScreen } from '../screens/MenuScreen';
+import { NotificationsScreen } from '../screens/NotificationsScreen';
+import { OffersScreen } from '../screens/OffersScreen';
 import { OrderTrackingScreen } from '../screens/OrderTrackingScreen';
 import { OrdersScreen } from '../screens/OrdersScreen';
 import { AddAddressScreen } from '../screens/AddAddressScreen';
@@ -70,6 +74,10 @@ export function RootNavigator(): React.JSX.Element {
             />
             <Stack.Screen name="OrderTracking" component={OrderTrackingScreen} />
             <Stack.Screen name="Orders" component={OrdersScreen} />
+            <Stack.Screen name="Account" component={AccountScreen} />
+            <Stack.Screen name="Notifications" component={NotificationsScreen} />
+            <Stack.Screen name="Loyalty" component={LoyaltyScreen} />
+            <Stack.Screen name="Offers" component={OffersScreen} />
           </>
         )}
       </Stack.Navigator>

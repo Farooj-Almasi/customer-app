@@ -7,11 +7,12 @@ import { Card, PrimaryButton, Screen } from '../components/ui';
 import { OrderStatusTracker } from '../features/order/OrderStatusTracker';
 import { useAsync } from '../hooks/useAsync';
 import { AppMap, DEFAULT_REGION, MapMarker } from '../maps/AppMap';
+import { useLocale } from '../i18n/LocaleProvider';
 import { ErrorState, Skeleton } from '../motion';
+import { useRealtime } from '../realtime/RealtimeProvider';
 import { ORDER_STATUS, ORDER_TYPE, OrderStatus } from '../types/backend';
 import type { DeliveryTracking } from '../api/types';
 import { RootStackParamList } from '../navigation/types';
-import { formatSar } from '../util/money';
 import { useTheme } from '../theme/theme';
 
 /** Statuses that are still moving — worth polling for live updates. */
@@ -31,9 +32,28 @@ const POLL_MS = 8000;
 export function OrderTrackingScreen({ route, navigation }: NativeStackScreenProps<RootStackParamList, 'OrderTracking'>): React.JSX.Element {
   const theme = useTheme();
   const { api } = useAuth();
+  const { t, sar } = useLocale();
   const { orderId } = route.params;
   const { data: order, loading, error, reload } = useAsync(() => api.order(orderId), [orderId]);
   const [tick, setTick] = useState(0);
+  const { subscribe } = useRealtime();
+
+  // Realtime is the accelerator; the poll below is the floor. The server only
+  // ever pushes this customer their own events, but they may have several orders
+  // open, so match on the order id and ignore the rest. On a match, refresh both
+  // the order (status) and the delivery tracking (driver position) at once.
+  useEffect(() => {
+    const matchesOrder = (payload: unknown): boolean =>
+      typeof payload === 'object' && payload !== null && (payload as { orderId?: unknown }).orderId === orderId;
+    const onEvent = (payload: unknown): void => {
+      if (matchesOrder(payload)) {
+        setTick((t) => t + 1);
+        reload();
+      }
+    };
+    const unsubs = [subscribe('order.transitioned', onEvent), subscribe('driver.location', onEvent)];
+    return () => unsubs.forEach((u) => u());
+  }, [subscribe, orderId, reload]);
 
   // Live delivery tracking (driver location) for delivery orders only.
   const tracking = useAsync<DeliveryTracking | null>(
@@ -54,16 +74,16 @@ export function OrderTrackingScreen({ route, navigation }: NativeStackScreenProp
   }, [order, tick, reload]);
 
   return (
-    <Screen title="Your order" onBack={() => navigation.canGoBack() ? navigation.goBack() : navigation.replace('Branches')}>
+    <Screen title={t('tracking.title')} onBack={() => navigation.canGoBack() ? navigation.goBack() : navigation.replace('Branches')}>
       {loading && !order ? (
         <View style={{ padding: 20, gap: 12 }}>
           <Skeleton height={220} radius={theme.radius.lg} />
         </View>
       ) : error && !order ? (
-        <ErrorState title="Couldn’t load your order" message={error.message} actionLabel="Retry" onAction={reload} />
+        <ErrorState title={t('tracking.errorTitle')} message={error.message} actionLabel={t('common.retry')} onAction={reload} />
       ) : order ? (
         <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }}>
-          <Text style={{ color: theme.colors.textMuted }}>Order {order.orderNumber}</Text>
+          <Text style={{ color: theme.colors.textMuted }}>{t('tracking.order', { number: order.orderNumber })}</Text>
           <OrderStatusTracker status={order.status} type={order.type} />
 
           {(() => {
@@ -77,10 +97,10 @@ export function OrderTrackingScreen({ route, navigation }: NativeStackScreenProp
             }
             const markers: MapMarker[] = [];
             if (driverLat !== null && driverLng !== null) {
-              markers.push({ id: 'driver', latitude: driverLat, longitude: driverLng, kind: 'driver', title: d?.driver?.user.fullName ?? 'Driver' });
+              markers.push({ id: 'driver', latitude: driverLat, longitude: driverLng, kind: 'driver', title: d?.driver?.user.fullName ?? t('tracking.driver') });
             }
             if (addrLat !== null && addrLng !== null) {
-              markers.push({ id: 'dest', latitude: addrLat, longitude: addrLng, kind: 'customer', title: 'Delivery address' });
+              markers.push({ id: 'dest', latitude: addrLat, longitude: addrLng, kind: 'customer', title: t('tracking.deliveryAddress') });
             }
             const focus = markers[0];
             return (
@@ -100,17 +120,17 @@ export function OrderTrackingScreen({ route, navigation }: NativeStackScreenProp
                 <Text style={{ color: theme.colors.text }}>
                   {item.quantity}× {item.productName}
                 </Text>
-                <Text style={{ color: theme.colors.textMuted }}>{formatSar(item.lineTotalMinor)}</Text>
+                <Text style={{ color: theme.colors.textMuted }}>{sar(item.lineTotalMinor)}</Text>
               </View>
             ))}
             <View style={{ height: 1, backgroundColor: theme.colors.border, marginVertical: 6 }} />
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text style={{ color: theme.colors.text, fontWeight: '800' }}>Total</Text>
-              <Text style={{ color: theme.colors.text, fontWeight: '800' }}>{formatSar(order.totalMinor)}</Text>
+              <Text style={{ color: theme.colors.text, fontWeight: '800' }}>{t('tracking.total')}</Text>
+              <Text style={{ color: theme.colors.text, fontWeight: '800' }}>{sar(order.totalMinor)}</Text>
             </View>
           </Card>
 
-          <PrimaryButton label="Back to home" onPress={() => navigation.replace('Branches')} />
+          <PrimaryButton label={t('tracking.backHome')} onPress={() => navigation.replace('Branches')} />
         </ScrollView>
       ) : null}
     </Screen>
