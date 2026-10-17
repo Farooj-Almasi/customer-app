@@ -61,7 +61,10 @@ export class Api {
 
   // --- Catalog (public) -----------------------------------------------------
   listBranches(): Promise<Branch[]> {
-    return this.http.request('/branches', { public: true });
+    // The customer branch list is `/customer/branches` and is public; `/branches`
+    // is the staff resource behind the auth guard (it 401s here). The public
+    // list is a superset of the fields this app's Branch type needs.
+    return this.http.request('/customer/branches', { public: true });
   }
 
   menu(branchId: string): Promise<Menu> {
@@ -69,7 +72,9 @@ export class Api {
   }
 
   quote(input: { branchId: string; type: OrderType; items: OrderItemInput[] }): Promise<PriceQuote> {
-    return this.http.request('/pricing/quote', { method: 'POST', body: input, public: true });
+    // `/pricing/quote` is authenticated (it prices against the signed-in actor),
+    // so this must carry the token — it is not a public endpoint.
+    return this.http.request('/pricing/quote', { method: 'POST', body: input });
   }
 
   /**
